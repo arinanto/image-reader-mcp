@@ -18,7 +18,7 @@ A Model Context Protocol (MCP) server for reading and processing local and remot
 ## Installation
 
 ```bash
-uvx --from https://github.com/k2sebeom/image-reader-mcp@main image-reader-mcp
+uvx --from git+https://github.com/k2sebeom/image-reader-mcp@main image-reader-mcp
 ```
 
 ## Configuration
@@ -30,7 +30,7 @@ Add the server to your MCP client configuration:
   "mcpServers": {
     "image-reader": {
       "command": "uvx",
-      "args": ["--from", "https://github.com/k2sebeom/image-reader-mcp@main", "image-reader-mcp"]
+      "args": ["--from", "git+https://github.com/k2sebeom/image-reader-mcp@main", "image-reader-mcp"]
     }
   }
 }
