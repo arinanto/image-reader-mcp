@@ -20,14 +20,14 @@ A Model Context Protocol (MCP) server for reading and processing local and remot
 ## Installation
 
 ```bash
-uvx --from git+https://github.com/k2sebeom/image-reader-mcp@main image-reader-mcp /path/to/images
+uvx --from git+https://github.com/arinanto/image-reader-mcp@main image-reader-mcp /path/to/images
 ```
 
 Any directories listed after `image-reader-mcp` are the only places `read_local_image`
 is allowed to read from. Pass several to allow multiple directories:
 
 ```bash
-uvx --from git+https://github.com/k2sebeom/image-reader-mcp@main image-reader-mcp /dir1 /dir2 /dir3
+uvx --from git+https://github.com/arinanto/image-reader-mcp@main image-reader-mcp /dir1 /dir2 /dir3
 ```
 
 If no directories are given, **all local reads are denied** (remote reads still work).
@@ -43,7 +43,7 @@ arguments:
     "image-reader": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/k2sebeom/image-reader-mcp@main",
+        "--from", "git+https://github.com/arinanto/image-reader-mcp@main",
         "image-reader-mcp",
         "/path/to/images"
       ]
@@ -92,7 +92,7 @@ read_remote_image("https://example.com/image.png", timeout=60, image_size="512x5
 ### Local Installation
 
 ```bash
-git clone https://github.com/k2sebeom/image-reader-mcp.git
+git clone https://github.com/arinanto/image-reader-mcp.git
 cd image-reader-mcp
 uv sync
 ```
