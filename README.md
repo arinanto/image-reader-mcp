@@ -8,6 +8,7 @@ A Model Context Protocol (MCP) server for reading and processing local and remot
 - **Remote image support**: Fetch and process images from URLs  
 - **Automatic resizing**: Configurable image resizing for optimal processing
 - **Multiple formats**: Support for common image formats (JPEG, PNG, GIF, BMP, etc.)
+- **Input validation**: Clear errors for malformed `image_size` strings, non-HTTP URLs, and non-image responses
 - **Error handling**: Robust error handling for missing files and network issues
 
 ## Requirements
