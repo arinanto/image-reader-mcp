@@ -1,11 +1,57 @@
 """Image processing utilities"""
 import io
+import os
 import re
+from collections.abc import Iterable
+from pathlib import Path
+
 import requests
 from PIL import Image as PILImage
 from mcp.server.fastmcp import Image
 
 _SIZE_PATTERN = re.compile(r"^(\d+)x(\d+)$")
+
+
+def resolve_directory(directory: str | os.PathLike[str]) -> Path:
+    """Resolve a directory to an absolute, symlink-free path.
+
+    ``~`` and environment variables are expanded before resolution.
+    """
+    return Path(os.path.expandvars(os.fspath(directory))).expanduser().resolve()
+
+
+def is_path_allowed(
+    file_path: str | os.PathLike[str], allowed_directories: Iterable[str | os.PathLike[str]]
+) -> bool:
+    """Return True if ``file_path`` lives inside one of ``allowed_directories``.
+
+    Both sides are fully resolved first, so ``..`` traversal and symlinks that
+    point outside an allowed directory are rejected.
+    """
+    resolved = Path(os.path.expandvars(os.fspath(file_path))).expanduser().resolve()
+    for directory in allowed_directories:
+        root = resolve_directory(directory)
+        if resolved == root or root in resolved.parents:
+            return True
+    return False
+
+
+def assert_path_allowed(
+    file_path: str | os.PathLike[str], allowed_directories: Iterable[str | os.PathLike[str]]
+) -> None:
+    """Raise PermissionError if ``file_path`` is outside every allowed directory.
+
+    The error message lists the allowed directories so clients can correct the
+    call. An empty allowlist denies every path.
+    """
+    directories = list(allowed_directories)
+    if is_path_allowed(file_path, directories):
+        return
+    allowed = ", ".join(str(resolve_directory(d)) for d in directories) or "(none configured)"
+    raise PermissionError(
+        f"Access to {os.fspath(file_path)!r} is forbidden: it is outside the allowed "
+        f"directories. Allowed directories: {allowed}"
+    )
 
 
 def _pil_to_image(img: PILImage) -> Image:

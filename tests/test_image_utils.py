@@ -7,6 +7,89 @@ from PIL import Image as PILImage
 from image_reader_mcp import image_utils
 
 
+class TestPathAllowlist:
+    def test_allows_file_inside_directory(self, tmp_path):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        image = allowed / "pic.png"
+        image.write_bytes(b"x")
+        assert image_utils.is_path_allowed(str(image), [str(allowed)])
+
+    def test_allows_the_directory_itself(self, tmp_path):
+        assert image_utils.is_path_allowed(str(tmp_path), [str(tmp_path)])
+
+    def test_rejects_file_outside_all_directories(self, tmp_path):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside.png"
+        outside.write_bytes(b"x")
+        assert not image_utils.is_path_allowed(str(outside), [str(allowed)])
+
+    def test_rejects_sibling_with_same_prefix(self, tmp_path):
+        allowed = tmp_path / "dir1"
+        sibling = tmp_path / "dir10"
+        allowed.mkdir()
+        sibling.mkdir()
+        image = sibling / "pic.png"
+        image.write_bytes(b"x")
+        # /dir10 must not be treated as inside /dir1
+        assert not image_utils.is_path_allowed(str(image), [str(allowed)])
+
+    def test_rejects_parent_traversal(self, tmp_path):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        (tmp_path / "secret.png").write_bytes(b"x")
+        traversal = allowed / ".." / "secret.png"
+        assert not image_utils.is_path_allowed(str(traversal), [str(allowed)])
+
+    def test_rejects_symlink_escape(self, tmp_path):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside.png"
+        outside.write_bytes(b"x")
+        link = allowed / "link.png"
+        link.symlink_to(outside)
+        # The symlink lives inside the allowed dir but resolves outside it.
+        assert not image_utils.is_path_allowed(str(link), [str(allowed)])
+
+    def test_allows_any_of_multiple_directories(self, tmp_path):
+        first = tmp_path / "first"
+        second = tmp_path / "second"
+        first.mkdir()
+        second.mkdir()
+        image = second / "pic.png"
+        image.write_bytes(b"x")
+        assert image_utils.is_path_allowed(str(image), [str(first), str(second)])
+
+    def test_empty_allowlist_denies_everything(self, tmp_path):
+        image = tmp_path / "pic.png"
+        image.write_bytes(b"x")
+        assert not image_utils.is_path_allowed(str(image), [])
+
+    def test_assert_raises_with_allowed_directories_in_message(self, tmp_path):
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside.png"
+        outside.write_bytes(b"x")
+        with pytest.raises(PermissionError) as excinfo:
+            image_utils.assert_path_allowed(str(outside), [str(allowed)])
+        message = str(excinfo.value)
+        assert "forbidden" in message
+        assert str(allowed) in message
+
+    def test_assert_mentions_none_when_allowlist_empty(self, tmp_path):
+        image = tmp_path / "pic.png"
+        image.write_bytes(b"x")
+        with pytest.raises(PermissionError) as excinfo:
+            image_utils.assert_path_allowed(str(image), [])
+        assert "(none configured)" in str(excinfo.value)
+
+    def test_assert_passes_for_allowed_path(self, tmp_path):
+        image = tmp_path / "pic.png"
+        image.write_bytes(b"x")
+        image_utils.assert_path_allowed(str(image), [str(tmp_path)])
+
+
 @pytest.fixture
 def sample_image(tmp_path) -> str:
     """Create a small real PNG on disk and return its path."""
