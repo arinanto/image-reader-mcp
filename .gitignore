@@ -23,7 +23,8 @@
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -267,9 +268,6 @@ build/
 dist/
 wheels/
 *.egg-info
-
-# uv local cache
-.uv-cache/
 
 # Virtual environments
 .venv
