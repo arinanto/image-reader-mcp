@@ -72,6 +72,14 @@ directories as arguments:
   - `timeout` (optional): Request timeout in seconds (default: 30)
   - `image_size` (optional): Resize format as "WIDTHxHEIGHT" (default: "128x128")
 
+### Directory Access
+
+- **list_allowed_directories**: List the directories the server allows local
+  images to be read from (resolved absolute paths). Returns an empty list when
+  the server was started without any directory, meaning all local reads are
+  denied.
+  - No arguments.
+
 ## Usage Examples
 
 ### Reading Local Images

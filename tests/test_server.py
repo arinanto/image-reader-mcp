@@ -23,12 +23,36 @@ def _text(result) -> str:
 
 
 @pytest.mark.asyncio
-async def test_server_exposes_both_tools():
+async def test_server_exposes_all_tools():
     async with create_connected_server_and_client_session(mcp) as session:
         await session.initialize()
         result = await session.list_tools()
     names = {tool.name for tool in result.tools}
-    assert names == {"read_local_image", "read_remote_image"}
+    assert names == {"read_local_image", "read_remote_image", "list_allowed_directories"}
+
+
+@pytest.mark.asyncio
+async def test_list_allowed_directories_tool_returns_configured_dirs(tmp_path):
+    first = tmp_path / "first"
+    first.mkdir()
+    server.set_allowed_directories([str(first)])
+
+    async with create_connected_server_and_client_session(mcp) as session:
+        await session.initialize()
+        result = await session.call_tool("list_allowed_directories", {})
+
+    assert not result.isError
+    assert str(first.resolve()) in _text(result)
+
+
+@pytest.mark.asyncio
+async def test_list_allowed_directories_tool_empty_when_unconfigured():
+    async with create_connected_server_and_client_session(mcp) as session:
+        await session.initialize()
+        result = await session.call_tool("list_allowed_directories", {})
+
+    assert not result.isError
+    assert _text(result).strip() in {"[]", ""}
 
 
 @pytest.mark.asyncio
@@ -107,11 +131,11 @@ class TestCliArguments:
 
     def test_set_allowed_directories_resolves_paths(self, tmp_path):
         server.set_allowed_directories([str(tmp_path)])
-        assert server.get_allowed_directories() == [str(tmp_path.resolve())]
+        assert server.list_allowed_directories() == [str(tmp_path.resolve())]
 
     def test_main_registers_directories_before_run(self, tmp_path, monkeypatch):
         calls = []
         monkeypatch.setattr(server.mcp, "run", lambda: calls.append("run"))
         main([str(tmp_path)])
         assert calls == ["run"]
-        assert server.get_allowed_directories() == [str(tmp_path.resolve())]
+        assert server.list_allowed_directories() == [str(tmp_path.resolve())]

@@ -28,8 +28,16 @@ def set_allowed_directories(directories: Iterable[str]) -> None:
     _allowed_directories = [str(resolve_directory(directory)) for directory in directories]
 
 
-def get_allowed_directories() -> list[str]:
-    """Return the resolved directories that local image reads are restricted to."""
+@mcp.tool()
+def list_allowed_directories() -> list[str]:
+    """Return the directories the server allows local images to be read from.
+
+    Paths are resolved (absolute, symlinks followed). An empty list means the
+    server was started without any directory, so all local reads are denied.
+
+    Returns:
+        Resolved absolute paths of the allowed directories.
+    """
     return list(_allowed_directories)
 
 
