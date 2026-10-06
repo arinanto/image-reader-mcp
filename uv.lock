@@ -187,7 +187,7 @@ wheels = [
 
 [[package]]
 name = "image-reader-mcp"
-version = "0.2.0a3"
+version = "1.0.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "mcp", extra = ["cli"] },

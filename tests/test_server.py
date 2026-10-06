@@ -7,15 +7,18 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from PIL import Image as PILImage
 
 import image_reader_mcp.server as server
+from image_reader_mcp import image_utils
 from image_reader_mcp.server import main, mcp
 
 
 @pytest.fixture(autouse=True)
-def _reset_allowed_directories():
-    """Keep the module-level allowlist from leaking between tests."""
+def _reset_server_config():
+    """Keep the module-level allowlist and max dimension from leaking between tests."""
     server.set_allowed_directories([])
+    server.set_max_image_dimension(image_utils.DEFAULT_MAX_IMAGE_DIMENSION)
     yield
     server.set_allowed_directories([])
+    server.set_max_image_dimension(image_utils.DEFAULT_MAX_IMAGE_DIMENSION)
 
 
 def _text(result) -> str:
@@ -60,12 +63,11 @@ async def test_read_local_image_tool_end_to_end(tmp_path):
     image_path = tmp_path / "sample.png"
     PILImage.new("RGB", (32, 16), (0, 255, 0)).save(image_path, format="PNG")
     server.set_allowed_directories([str(tmp_path)])
+    server.set_max_image_dimension(16)
 
     async with create_connected_server_and_client_session(mcp) as session:
         await session.initialize()
-        result = await session.call_tool(
-            "read_local_image", {"file_path": str(image_path), "image_size": "16x8"}
-        )
+        result = await session.call_tool("read_local_image", {"file_path": str(image_path)})
 
     assert not result.isError
     assert result.content, "tool call returned no content"
@@ -129,6 +131,19 @@ class TestCliArguments:
         args = server._build_arg_parser().parse_args(["/dir1", "/dir2", "/dir3"])
         assert args.directories == ["/dir1", "/dir2", "/dir3"]
 
+    def test_max_image_dimension_defaults_to_1600(self):
+        args = server._build_arg_parser().parse_args([])
+        assert args.max_image_dimension == 1600
+
+    def test_max_image_dimension_override(self):
+        args = server._build_arg_parser().parse_args(["--max-image-dimension", "512"])
+        assert args.max_image_dimension == 512
+
+    @pytest.mark.parametrize("value", ["0", "-1", "abc", "1.5"])
+    def test_invalid_max_image_dimension_rejected(self, value):
+        with pytest.raises(SystemExit):
+            server._build_arg_parser().parse_args(["--max-image-dimension", value])
+
     def test_set_allowed_directories_resolves_paths(self, tmp_path):
         server.set_allowed_directories([str(tmp_path)])
         assert server.list_allowed_directories() == [str(tmp_path.resolve())]
@@ -139,3 +154,8 @@ class TestCliArguments:
         main([str(tmp_path)])
         assert calls == ["run"]
         assert server.list_allowed_directories() == [str(tmp_path.resolve())]
+
+    def test_main_sets_max_image_dimension(self, monkeypatch):
+        monkeypatch.setattr(server.mcp, "run", lambda: None)
+        main(["--max-image-dimension", "256"])
+        assert server._max_image_dimension == 256

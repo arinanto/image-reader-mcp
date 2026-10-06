@@ -1,7 +1,6 @@
 """Image processing utilities"""
 import io
 import os
-import re
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -9,7 +8,10 @@ import requests
 from PIL import Image as PILImage
 from mcp.server.fastmcp import Image
 
-_SIZE_PATTERN = re.compile(r"^(\d+)x(\d+)$")
+# Largest dimension (in pixels) an image may have after processing. Images whose
+# longest side exceeds this are scaled down proportionally; smaller images are
+# returned unchanged.
+DEFAULT_MAX_IMAGE_DIMENSION = 1600
 
 
 def resolve_directory(directory: str | os.PathLike[str]) -> Path:
@@ -61,48 +63,47 @@ def _pil_to_image(img: PILImage) -> Image:
     return Image(data=img_bytes, format='png')
 
 
-def _parse_image_size(image_size: str) -> tuple[int, int]:
-    """Parse and validate a "WIDTHxHEIGHT" size string.
+def _validate_max_dimension(max_dimension: int) -> int:
+    """Validate and return ``max_dimension`` as a positive integer.
 
     Args:
-        image_size: Size in the form "WIDTHxHEIGHT" (e.g. "256x128")
+        max_dimension: Largest allowed image dimension in pixels.
 
     Returns:
-        (width, height) tuple of positive integers
+        The validated dimension.
 
     Raises:
-        ValueError: If the string is not in the form "WIDTHxHEIGHT" or any
-            dimension is not a positive integer.
+        ValueError: If ``max_dimension`` is not a positive integer.
     """
-    if not isinstance(image_size, str):
-        raise ValueError(
-            f"image_size must be a string in the form \"WIDTHxHEIGHT\", got {type(image_size).__name__}"
-        )
-    match = _SIZE_PATTERN.match(image_size.strip())
-    if not match:
-        raise ValueError(
-            f"Invalid image_size {image_size!r}: expected \"WIDTHxHEIGHT\", e.g. \"128x128\""
-        )
-    width, height = int(match.group(1)), int(match.group(2))
-    if width < 1 or height < 1:
-        raise ValueError(
-            f"Invalid image_size {image_size!r}: width and height must be positive integers"
-        )
-    return width, height
+    if isinstance(max_dimension, bool) or not isinstance(max_dimension, int) or max_dimension < 1:
+        raise ValueError(f"max_dimension must be a positive integer, got {max_dimension!r}")
+    return max_dimension
 
 
-def load_local_image(file_path: str, image_size: str = "128x128") -> Image:
-    """Load image from local file path"""
-    width, height = _parse_image_size(image_size)
+def load_local_image(
+    file_path: str, max_dimension: int = DEFAULT_MAX_IMAGE_DIMENSION
+) -> Image:
+    """Load an image from a local file path, capped to ``max_dimension``.
+
+    The longest side is scaled down to ``max_dimension`` while preserving the
+    aspect ratio; images already within the limit are returned unchanged.
+    """
+    dimension = _validate_max_dimension(max_dimension)
     img = PILImage.open(file_path)
     img.load()  # Force-decode now so corrupt files fail early with a clear error
-    img = img.resize((width, height))
+    img.thumbnail((dimension, dimension), PILImage.LANCZOS)
     return _pil_to_image(img)
 
 
-def load_remote_image(url: str, timeout: int = 30, image_size: str = "128x128") -> Image:
-    """Load image from remote URL"""
-    width, height = _parse_image_size(image_size)
+def load_remote_image(
+    url: str, timeout: int = 30, max_dimension: int = DEFAULT_MAX_IMAGE_DIMENSION
+) -> Image:
+    """Load an image from a remote URL, capped to ``max_dimension``.
+
+    The longest side is scaled down to ``max_dimension`` while preserving the
+    aspect ratio; images already within the limit are returned unchanged.
+    """
+    dimension = _validate_max_dimension(max_dimension)
     if timeout <= 0:
         raise ValueError(f"timeout must be a positive number, got {timeout}")
     if not url.lower().startswith(("http://", "https://")):
@@ -119,5 +120,5 @@ def load_remote_image(url: str, timeout: int = 30, image_size: str = "128x128") 
 
     img = PILImage.open(io.BytesIO(response.content))
     img.load()  # Force-decode now so non-image payloads fail early
-    img = img.resize((width, height))
+    img.thumbnail((dimension, dimension), PILImage.LANCZOS)
     return _pil_to_image(img)
