@@ -1,0 +1,91 @@
+name: Build binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - "image-reader-mcp.spec"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            runner: ubuntu-latest
+            asset: image-reader-mcp-linux-x86_64
+          - target: windows-x86_64
+            runner: windows-latest
+            asset: image-reader-mcp-windows-x86_64.exe
+          - target: macos-x86_64
+            runner: macos-13
+            asset: image-reader-mcp-macos-x86_64
+          - target: macos-arm64
+            runner: macos-14
+            asset: image-reader-mcp-macos-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Build binary
+        run: uv run pyinstaller image-reader-mcp.spec --clean --noconfirm
+
+      - name: Smoke test the binary
+        shell: bash
+        run: |
+          if [ -f dist/image-reader-mcp.exe ]; then
+            ./dist/image-reader-mcp.exe --help
+          else
+            ./dist/image-reader-mcp --help
+          fi
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          source="dist/image-reader-mcp"
+          if [ -f "$source.exe" ]; then source="$source.exe"; fi
+          mv "$source" "dist/${{ matrix.asset }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" artifacts/* --generate-notes --verify-tag

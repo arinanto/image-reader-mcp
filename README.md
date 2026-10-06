@@ -10,6 +10,7 @@ A Model Context Protocol (MCP) server for reading and processing local and remot
 - **Multiple formats**: Support for common image formats (JPEG, PNG, GIF, BMP, etc.)
 - **Input validation**: Clear errors for malformed `image_size` strings, non-HTTP URLs, and non-image responses
 - **Strict path allowlist**: Local reads are restricted to directories given on the command line; anything else is rejected
+- **Self-contained binaries**: Tagged releases ship a single PyInstaller executable per platform — no Python install required
 - **Error handling**: Robust error handling for missing files and network issues
 
 ## Requirements
@@ -31,6 +32,22 @@ uvx --from git+https://github.com/arinanto/image-reader-mcp@main image-reader-mc
 ```
 
 If no directories are given, **all local reads are denied** (remote reads still work).
+
+### Prebuilt binaries
+
+Every tagged release (`v*`) ships a single self-contained executable for Linux,
+macOS (Intel and Apple silicon), and Windows on the
+[releases page](https://github.com/arinanto/image-reader-mcp/releases). No Python
+installation is required:
+
+```bash
+# Example: Linux x86_64
+chmod +x image-reader-mcp-linux-x86_64
+./image-reader-mcp-linux-x86_64 /path/to/images
+```
+
+> **macOS:** the binaries are unsigned, so Gatekeeper may quarantine them after
+download. Clear the flag with `xattr -d com.apple.quarantine <binary>`.
 
 ## Configuration
 
@@ -101,7 +118,22 @@ uv sync
 
 ```bash
 uv run image-reader-mcp /dir1 /dir2
+# equivalently
+uv run python -m image_reader_mcp /dir1 /dir2
 ```
+
+### Building a Standalone Binary
+
+The [PyInstaller](https://pyinstaller.org/) spec at the repository root bundles
+the server and its dependencies into one executable:
+
+```bash
+uv run pyinstaller image-reader-mcp.spec --clean --noconfirm
+```
+
+The result is `dist/image-reader-mcp` (`dist/image-reader-mcp.exe` on Windows).
+The `Build binaries` GitHub Actions workflow builds all four platform binaries on
+tagged releases and attaches them to the GitHub release.
 
 ### Running Tests
 
