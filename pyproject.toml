@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "image-reader-mcp"
-version = "0.2.0a2"
+version = "0.2.0a3"
 description = "MCP server for reading local and remote images"
 readme = "README.md"
 license = { text = "MIT" }

@@ -28,7 +28,7 @@ jobs:
             runner: windows-latest
             asset: image-reader-mcp-windows-x86_64.exe
           - target: macos-arm64
-            runner: macos-15
+            runner: macos-latest
             asset: image-reader-mcp-macos-arm64
     steps:
       - name: Checkout
