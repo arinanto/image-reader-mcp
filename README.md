@@ -15,30 +15,15 @@ A Model Context Protocol (MCP) server for reading and processing local and remot
 
 ## Requirements
 
-- Python 3.12 or newer
 - VS Code, Cursor, Windsurf, Claude Desktop, or any other MCP client
+
+The prebuilt binaries are self-contained, so no Python installation is required.
 
 ## Installation
 
-```bash
-uvx --from git+https://github.com/arinanto/image-reader-mcp@main image-reader-mcp /path/to/images
-```
-
-Any directories listed after `image-reader-mcp` are the only places `read_local_image`
-is allowed to read from. Pass several to allow multiple directories:
-
-```bash
-uvx --from git+https://github.com/arinanto/image-reader-mcp@main image-reader-mcp /dir1 /dir2 /dir3
-```
-
-If no directories are given, **all local reads are denied** (remote reads still work).
-
-### Prebuilt binaries
-
 Every tagged release (`v*`) ships a single self-contained executable for Linux,
 macOS (Intel and Apple silicon), and Windows on the
-[releases page](https://github.com/arinanto/image-reader-mcp/releases). No Python
-installation is required:
+[releases page](https://github.com/arinanto/image-reader-mcp/releases).
 
 ```bash
 # Example: Linux x86_64
@@ -46,24 +31,29 @@ chmod +x image-reader-mcp-linux-x86_64
 ./image-reader-mcp-linux-x86_64 /path/to/images
 ```
 
+Directories listed after the executable are the only places `read_local_image` is
+allowed to read from. Pass several to allow multiple directories:
+
+```bash
+./image-reader-mcp-linux-x86_64 /dir1 /dir2 /dir3
+```
+
+If no directories are given, **all local reads are denied** (remote reads still work).
+
 > **macOS:** the binaries are unsigned, so Gatekeeper may quarantine them after
 download. Clear the flag with `xattr -d com.apple.quarantine <binary>`.
 
 ## Configuration
 
-Add the server to your MCP client configuration, passing the allowed directories as
-arguments:
+Point your MCP client at the downloaded executable, passing the allowed
+directories as arguments:
 
 ```json
 {
   "mcpServers": {
     "image-reader": {
-      "command": "uvx",
-      "args": [
-        "--from", "git+https://github.com/arinanto/image-reader-mcp@main",
-        "image-reader-mcp",
-        "/path/to/images"
-      ]
+      "command": "/path/to/image-reader-mcp",
+      "args": ["/path/to/images"]
     }
   }
 }
@@ -117,8 +107,6 @@ uv sync
 ### Running the Server
 
 ```bash
-uv run image-reader-mcp /dir1 /dir2
-# equivalently
 uv run python -m image_reader_mcp /dir1 /dir2
 ```
 
