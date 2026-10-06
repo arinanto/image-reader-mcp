@@ -92,4 +92,6 @@ jobs:
           if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             flags+=(--prerelease)
           fi
-          gh release create "${GITHUB_REF_NAME}" artifacts/* "${flags[@]}"
+          # This job has no checkout, so gh cannot infer the repo from a git
+          # remote; point it at the repository explicitly.
+          gh release create "${GITHUB_REF_NAME}" artifacts/* "${flags[@]}" --repo "${GITHUB_REPOSITORY}"
