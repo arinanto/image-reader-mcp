@@ -22,7 +22,7 @@ The prebuilt binaries are self-contained, so no Python installation is required.
 ## Installation
 
 Every tagged release (`v*`) ships a single self-contained executable for Linux,
-macOS (Intel and Apple silicon), and Windows on the
+macOS (Apple silicon), and Windows on the
 [releases page](https://github.com/arinanto/image-reader-mcp/releases).
 
 ```bash

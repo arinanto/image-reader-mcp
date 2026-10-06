@@ -27,11 +27,8 @@ jobs:
           - target: windows-x86_64
             runner: windows-latest
             asset: image-reader-mcp-windows-x86_64.exe
-          - target: macos-x86_64
-            runner: macos-13
-            asset: image-reader-mcp-macos-x86_64
           - target: macos-arm64
-            runner: macos-14
+            runner: macos-15
             asset: image-reader-mcp-macos-arm64
     steps:
       - name: Checkout
@@ -90,8 +87,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           flags=(--generate-notes --verify-tag)
-          # Prerelease tags (e.g. v0.2.0-alpha1) become GitHub prereleases.
-          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+- ]]; then
+          # Anything that is not a bare vX.Y.Z is a prerelease (covers
+          # v0.2.0-alpha2 as well as PEP 440 forms like v0.2.0a2).
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             flags+=(--prerelease)
           fi
           gh release create "${GITHUB_REF_NAME}" artifacts/* "${flags[@]}"
