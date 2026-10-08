@@ -56,7 +56,7 @@ def assert_path_allowed(
     )
 
 
-def _pil_to_image(img: PILImage) -> Image:
+def _pil_to_image(img: PILImage.Image) -> Image:
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     img_bytes = buffer.getvalue()
@@ -91,7 +91,7 @@ def load_local_image(
     dimension = _validate_max_dimension(max_dimension)
     img = PILImage.open(file_path)
     img.load()  # Force-decode now so corrupt files fail early with a clear error
-    img.thumbnail((dimension, dimension), PILImage.LANCZOS)
+    img.thumbnail((dimension, dimension), PILImage.Resampling.LANCZOS)
     return _pil_to_image(img)
 
 
@@ -120,5 +120,5 @@ def load_remote_image(
 
     img = PILImage.open(io.BytesIO(response.content))
     img.load()  # Force-decode now so non-image payloads fail early
-    img.thumbnail((dimension, dimension), PILImage.LANCZOS)
+    img.thumbnail((dimension, dimension), PILImage.Resampling.LANCZOS)
     return _pil_to_image(img)
