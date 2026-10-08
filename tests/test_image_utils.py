@@ -7,6 +7,17 @@ from PIL import Image as PILImage
 from image_reader_mcp import image_utils
 
 
+def _png_bytes(result: image_utils.Image) -> bytes:
+    """Return the raw PNG bytes carried by a FastMCP ``Image`` result.
+
+    ``Image.data`` is typed ``bytes | None`` (the class also accepts a ``path``),
+    so narrow it here once instead of at every call site.
+    """
+    data = result.data
+    assert data is not None, "expected inline image data, got a path-based Image"
+    return data
+
+
 class TestPathAllowlist:
     def test_allows_file_inside_directory(self, tmp_path):
         allowed = tmp_path / "allowed"
@@ -138,39 +149,40 @@ class TestMaxDimensionValidation:
 class TestLoadLocalImage:
     def test_returns_png(self, sample_image):
         result = image_utils.load_local_image(sample_image, 1600)
-        assert result.data[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic bytes
-        img = PILImage.open(io.BytesIO(result.data))
+        data = _png_bytes(result)
+        assert data[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic bytes
+        img = PILImage.open(io.BytesIO(data))
         assert img.format == "PNG"
 
     def test_small_image_passes_through_unchanged(self, sample_image):
         # The 32x16 sample is below the cap, so it must not be touched.
         result = image_utils.load_local_image(sample_image, 64)
-        img = PILImage.open(io.BytesIO(result.data))
+        img = PILImage.open(io.BytesIO(_png_bytes(result)))
         assert img.size == (32, 16)
 
     def test_landscape_longest_side_is_capped(self, large_image):
         result = image_utils.load_local_image(large_image, 1600)
-        img = PILImage.open(io.BytesIO(result.data))
+        img = PILImage.open(io.BytesIO(_png_bytes(result)))
         assert img.size == (1600, 800)
 
     def test_portrait_longest_side_is_capped(self, tmp_path):
         path = tmp_path / "portrait.png"
         PILImage.new("RGB", (1600, 3200), (0, 255, 0)).save(path, format="PNG")
         result = image_utils.load_local_image(str(path), 1600)
-        img = PILImage.open(io.BytesIO(result.data))
+        img = PILImage.open(io.BytesIO(_png_bytes(result)))
         assert img.size == (800, 1600)
 
     def test_image_exactly_at_cap_is_unchanged(self, tmp_path):
         path = tmp_path / "exact.png"
         PILImage.new("RGB", (1600, 800), (0, 0, 0)).save(path, format="PNG")
         result = image_utils.load_local_image(str(path), 1600)
-        img = PILImage.open(io.BytesIO(result.data))
+        img = PILImage.open(io.BytesIO(_png_bytes(result)))
         assert img.size == (1600, 800)
 
     def test_default_dimension_is_1600(self, large_image):
         # 3200x1600 with no explicit dimension must cap at the default 1600.
         result = image_utils.load_local_image(large_image)
-        img = PILImage.open(io.BytesIO(result.data))
+        img = PILImage.open(io.BytesIO(_png_bytes(result)))
         assert img.size == (1600, 800)
 
     @pytest.mark.parametrize("max_dimension", [0, -10])
@@ -197,8 +209,9 @@ class TestLoadRemoteImage:
             lambda url, timeout=None: FakeResponse(png, "image/png"),
         )
         result = image_utils.load_remote_image("https://example.com/img.png", max_dimension=16)
-        assert result.data[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic bytes
-        img = PILImage.open(io.BytesIO(result.data))
+        data = _png_bytes(result)
+        assert data[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic bytes
+        img = PILImage.open(io.BytesIO(data))
         assert img.size == (16, 8)
 
     def test_small_image_passes_through_unchanged(self, monkeypatch, sample_image):
@@ -208,7 +221,7 @@ class TestLoadRemoteImage:
             lambda url, timeout=None: FakeResponse(png, "image/png"),
         )
         result = image_utils.load_remote_image("https://example.com/img.png", max_dimension=1600)
-        img = PILImage.open(io.BytesIO(result.data))
+        img = PILImage.open(io.BytesIO(_png_bytes(result)))
         assert img.size == (32, 16)
 
     def test_accepts_content_type_with_parameters(self, monkeypatch, sample_image):
@@ -235,7 +248,7 @@ class TestLoadRemoteImage:
             lambda url, timeout=None: FakeResponse(png),
         )
         result = image_utils.load_remote_image("https://example.com/img.png")
-        img = PILImage.open(io.BytesIO(result.data))
+        img = PILImage.open(io.BytesIO(_png_bytes(result)))
         assert img.size == (32, 16)
 
     def test_invalid_max_dimension_raises_before_network(self, monkeypatch):
